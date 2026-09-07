@@ -6,8 +6,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "atlantiquestops-db",
-      "database_id": ""
+      "database_name": "atlantiquestops",
+      "database_id": "d641e483-8298-4772-be36-f79bbbd510df"
     }
   ],
   "r2_buckets": [
