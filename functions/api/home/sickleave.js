@@ -3,7 +3,7 @@ import {
   pageTitle, queryDatabase, relationTitles, parisDate
 } from "../../_home_status.js";
 
-const SICKLEAVE_DATABASE_ID = "34d6bbfa7ec180e89ac2da151f11e266";
+
 
 function formatDate(date) {
   if (!date) return "";
