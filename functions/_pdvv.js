@@ -6,7 +6,7 @@ import {
   notionRequest
 } from "./_home_status.js";
 
-export const PDVV_FALLBACK_DATABASE_ID = "3a46bbfa7ec1801f8675d4a8b498aaf4";
+export const PDVV_FALLBACK_DATABASE_ID = "";
 
 const VEHICLE_REGISTRATION_PROPERTIES = [
   "Immatriculation", "Véhicule", "Vehicule", "Registration", "Nom", "Name"
