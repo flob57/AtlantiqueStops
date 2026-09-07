@@ -91,7 +91,7 @@ export async function onRequestGet(context) {
     try {
       const devices = await loadPdvv(
         token,
-        context.env.NOTION_PDVV_DATABASE_ID || PDVV_FALLBACK_DATABASE_ID
+        context.env.NOTION_PDVV_DATABASE_ID
       );
       const theoreticalAssignments = pdvvByTheoretical(devices);
       for (const vehicle of vehicles) {
