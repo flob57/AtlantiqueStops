@@ -20,7 +20,7 @@ a { color: inherit; }
 .home-brand span { color: var(--muted); font-size: 12px; }
 .brand-mark { display: grid !important; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--green); color: #071005 !important; font-weight: 950; font-style: italic; font-size: 24px !important; }
 .version-pill { padding: 4px 9px; border: 1px solid #516155; border-radius: 999px; color: #bec9c1; font-size: 10px; }
-.hero { position: relative; min-height: 460px; background: url('./assets/atlantiquestops-hero.jpg') center 52% / cover no-repeat; overflow: hidden; }
+.hero { position: relative; min-height: 460px; background: url('./assets/atlantiquestops-hero-v2.jpg') center 52% / cover no-repeat; overflow: hidden; }
 .hero-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(3,6,4,.82) 0%, rgba(3,6,4,.58) 42%, rgba(3,6,4,.08) 75%), linear-gradient(0deg, #050806 0%, transparent 32%); }
 .hero-content { position: relative; z-index: 1; width: min(1200px, calc(100% - 40px)); margin: auto; padding: 72px 0 90px; }
 .eyebrow, .section-kicker { margin: 0 0 8px; color: var(--green); letter-spacing: .14em; font-size: 11px; font-weight: 850; }
