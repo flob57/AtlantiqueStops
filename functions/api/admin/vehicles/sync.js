@@ -40,7 +40,8 @@ export async function onRequestPost(context) {
     const db = requireDb(context);
     await ensurePersonalSchema(db);
     const token = context.env.NOTION_TOKEN;
-    const databaseId = context.env.NOTION_VEHICLES_DATABASE_ID || FALLBACK_DATABASE_ID;
+    const databaseId = context.env.NOTION_VEHICLES_DATABASE_ID;
+    if (!databaseId) return error("Variable NOTION_VEHICLES_DATABASE_ID absente.", 503);
     if (!token) return error("Secret NOTION_TOKEN absent.", 500);
 
     let cursor = null;
