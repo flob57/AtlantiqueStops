@@ -1,6 +1,6 @@
 import { json, error, requireDb, ensurePersonalSchema} from "../../../_personal.js";
 
-const FALLBACK_DATABASE_ID = "2e66bbfa7ec1804f963bc019a4d6de92";
+
 
 function plainText(parts) {
   return Array.isArray(parts) ? parts.map(p => p?.plain_text || "").join("").trim() : "";
