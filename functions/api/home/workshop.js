@@ -3,8 +3,7 @@ import {
   queryDatabase, coverUrl, parisDate, daysBetweenInclusive
 } from "../../_home_status.js";
 
-const VEHICLES_DATABASE_ID = "2e66bbfa7ec1804f963bc019a4d6de92";
-const PARKING_DATABASE_ID = "35e6bbfa7ec180a18deff12d69f95ebc";
+
 const WORKSHOP_NAME = "Coat-Conq - Atelier";
 
 async function findWorkshopParkingPage(token, parkingDatabaseId) {
