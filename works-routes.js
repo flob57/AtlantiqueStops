@@ -1,0 +1,440 @@
+(() => {
+  const STORAGE_KEY = 'breizhstops-roadworks-routes-v2';
+  const LEGACY_KEY = 'breizhstops-roadworks-routes-v1';
+  const ROUTING_ENDPOINT = 'https://router.project-osrm.org/route/v1/driving';
+  const API_ENDPOINT = '/api/works-routes';
+  const $ = id => document.getElementById(id);
+
+  let map;
+  let layerGroup;
+  let draftLayer;
+  let draftLine;
+  let draftMarkers = [];
+  let drawing = false;
+  let waypointPicking = false;
+  let controlPoints = []; // départ, passages, arrivée
+  let routedPoints = [];
+  let worksVisible = true;
+  let deviationsVisible = true;
+  let records = [];
+  let routeRequest = 0;
+
+  const esc = value => String(value ?? '')
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+
+  function getMap() {
+    if (window.breizhStopsMap?.addLayer) return window.breizhStopsMap;
+    if (window.BreizhStopsMapApi?.getMap) return window.BreizhStopsMapApi.getMap();
+    try { if (window.map?.addLayer) return window.map; } catch {}
+    return null;
+  }
+
+  function normalizeRecord(record) {
+    return {
+      ...record,
+      id: String(record?.id || `works-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
+      title: String(record?.title || (record?.routeType === 'deviation' ? 'Déviation' : 'Travaux')),
+      routeType: record?.routeType === 'deviation' ? 'deviation' : 'travaux',
+      startDate: record?.startDate || '',
+      endDate: record?.endDate || '',
+      comment: String(record?.comment || ''),
+      controlPoints: Array.isArray(record?.controlPoints) ? record.controlPoints : (record?.points || []),
+      routePoints: Array.isArray(record?.routePoints) ? record.routePoints : (record?.points || []),
+      updatedAt: record?.updatedAt || new Date().toISOString()
+    };
+  }
+
+  function loadLocal() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_KEY) || '[]';
+      records = JSON.parse(raw).map(normalizeRecord);
+      saveLocal();
+    } catch { records = []; }
+  }
+
+  function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+
+  function timestamp(value) {
+    const time = new Date(value || 0).getTime();
+    return Number.isFinite(time) ? time : 0;
+  }
+
+  async function apiRequest(url, options = {}) {
+    const response = await fetch(url, {
+      cache: 'no-store',
+      headers: { 'content-type': 'application/json', ...(options.headers || {}) },
+      ...options
+    });
+    if (!response.ok) {
+      let message = `HTTP ${response.status}`;
+      try { message = (await response.json())?.error || message; } catch {}
+      throw new Error(message);
+    }
+    return response.status === 204 ? null : response.json();
+  }
+
+  async function upsertCloud(record) {
+    return apiRequest(API_ENDPOINT, { method: 'POST', body: JSON.stringify(record) });
+  }
+
+  async function deleteCloud(id) {
+    return apiRequest(`${API_ENDPOINT}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
+  async function synchronize() {
+    loadLocal();
+    try {
+      const cloud = (await apiRequest(API_ENDPOINT)).map(normalizeRecord);
+      const merged = new Map(cloud.map(item => [item.id, item]));
+      const pending = [];
+
+      for (const local of records) {
+        const remote = merged.get(local.id);
+        if (!remote || timestamp(local.updatedAt) > timestamp(remote.updatedAt)) {
+          merged.set(local.id, local);
+          pending.push(local);
+        }
+      }
+
+      records = [...merged.values()].sort((a, b) => String(a.title).localeCompare(String(b.title), 'fr', { numeric: true }));
+      saveLocal();
+      if (pending.length) await Promise.allSettled(pending.map(upsertCloud));
+      return true;
+    } catch (error) {
+      console.warn('Synchronisation des travaux indisponible, utilisation du cache local.', error);
+      return false;
+    }
+  }
+
+  function formatDate(value) {
+    if (!value) return 'Non renseignée';
+    const date = new Date(`${value}T12:00:00`);
+    return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('fr-FR').format(date);
+  }
+
+  function routeMeta(record) {
+    return record?.routeType === 'deviation'
+      ? { label: 'Déviation', icon: '↪', color: '#16a34a', draftColor: '#22c55e' }
+      : { label: 'Travaux', icon: '🚧', color: '#f57c00', draftColor: '#ff9800' };
+  }
+
+  function makePopup(record) {
+    const dates = record.startDate || record.endDate
+      ? `<div><strong>Dates :</strong> ${esc(formatDate(record.startDate))} → ${esc(formatDate(record.endDate))}</div>` : '';
+    const meta = routeMeta(record);
+    return `<div class="works-popup">
+      <strong>${meta.icon} ${esc(record.title || meta.label)}</strong>
+      ${dates}
+      ${record.comment ? `<p>${esc(record.comment)}</p>` : ''}
+      <div><small>${Math.max(0, (record.controlPoints?.length || 2) - 2)} passage(s) imposé(s)</small></div>
+      <div class="works-popup-actions">
+        <button type="button" data-work-edit="${esc(record.id)}">Modifier</button>
+        <button type="button" class="danger" data-work-delete="${esc(record.id)}">Supprimer</button>
+      </div>
+    </div>`;
+  }
+
+  function routeIcon(record) {
+    const meta = routeMeta(record);
+    return L.divIcon({
+      className: `roadworks-map-icon ${record?.routeType === 'deviation' ? 'deviation-map-icon' : ''}`,
+      html: `<span style="--route-color:${meta.color}">${meta.icon}</span>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15]
+    });
+  }
+
+  function midpointOnPath(points) {
+    if (!points.length) return null;
+    return points[Math.floor(points.length / 2)];
+  }
+
+  function render() {
+    if (!map || !window.L) return;
+    if (!layerGroup) layerGroup = L.layerGroup().addTo(map);
+    layerGroup.clearLayers();
+    if (!worksVisible && !deviationsVisible) { syncWorksToggle(); return; }
+
+    records.forEach(record => {
+      if (record.routeType === 'deviation' ? !deviationsVisible : !worksVisible) return;
+      const source = record.routePoints?.length >= 2 ? record.routePoints : record.controlPoints;
+      if (!Array.isArray(source) || source.length < 2) return;
+      const latlngs = source.map(point => [point.lat, point.lng]);
+      const meta = routeMeta(record);
+      L.polyline(latlngs, { color: meta.color, weight: 9, opacity: 0.9, lineCap: 'round', dashArray: '15 8' })
+        .bindPopup(makePopup(record), { minWidth: 240 }).addTo(layerGroup);
+      const middle = midpointOnPath(latlngs);
+      if (middle) L.marker(middle, { icon: routeIcon(record), interactive: true })
+        .bindPopup(makePopup(record), { minWidth: 240 }).addTo(layerGroup);
+    });
+    syncWorksToggle();
+  }
+
+  function setRoutingStatus(message, isError = false) {
+    const el = $('worksRoutingStatus');
+    if (!el) return;
+    el.textContent = message;
+    el.classList.toggle('error', isError);
+  }
+
+  async function calculateRoadRoute(fit = false) {
+    if (controlPoints.length < 2) return;
+    const requestId = ++routeRequest;
+    setRoutingStatus('Calcul du tracé routier…');
+    const coordinates = controlPoints.map(p => `${Number(p.lng)},${Number(p.lat)}`).join(';');
+    try {
+      const response = await fetch(`${ROUTING_ENDPOINT}/${coordinates}?overview=full&geometries=geojson&steps=false`, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (requestId !== routeRequest) return;
+      if (!data.routes?.[0]?.geometry?.coordinates) throw new Error('Aucun itinéraire routier trouvé');
+      routedPoints = data.routes[0].geometry.coordinates.map(([lng, lat]) => ({ lat, lng }));
+      drawDraft(fit);
+      const km = data.routes[0].distance / 1000;
+      setRoutingStatus(`${km.toFixed(2)} km · ${Math.max(0, controlPoints.length - 2)} passage(s) imposé(s)`);
+    } catch (error) {
+      routedPoints = controlPoints.map(p => ({ ...p }));
+      drawDraft(fit);
+      setRoutingStatus('Routage indisponible : tracé provisoire en ligne droite.', true);
+    }
+  }
+
+  function clearDraft() {
+    if (draftLayer) draftLayer.clearLayers();
+    draftLine = null;
+    draftMarkers = [];
+    controlPoints = [];
+    routedPoints = [];
+  }
+
+  function drawDraft(fit = false) {
+    if (!map || controlPoints.length < 2) return;
+    if (!draftLayer) draftLayer = L.layerGroup().addTo(map);
+    draftLayer.clearLayers();
+    draftMarkers = [];
+    const displayed = routedPoints.length >= 2 ? routedPoints : controlPoints;
+    const selectedType = $('worksRouteType')?.value === 'deviation' ? 'deviation' : 'travaux';
+    const draftMeta = routeMeta({ routeType: selectedType });
+    draftLine = L.polyline(displayed.map(p => [p.lat, p.lng]), {
+      color: draftMeta.draftColor, weight: 10, opacity: 0.95, dashArray: '12 8', lineCap: 'round'
+    }).addTo(draftLayer);
+
+    controlPoints.forEach((point, index) => {
+      const isStart = index === 0;
+      const isEnd = index === controlPoints.length - 1;
+      const selectedType = $('worksRouteType')?.value === 'deviation' ? 'déviation' : 'travaux';
+      const title = isStart ? `Départ ${selectedType}` : isEnd ? `Fin ${selectedType}` : `Passage ${index}`;
+      const marker = L.marker([point.lat, point.lng], { draggable: true, title }).addTo(draftLayer);
+      marker.bindTooltip(title);
+      marker.on('dragend', async event => {
+        const ll = event.target.getLatLng();
+        controlPoints[index] = { lat: ll.lat, lng: ll.lng };
+        await calculateRoadRoute(false);
+      });
+      draftMarkers.push(marker);
+    });
+    if (fit && draftLine.getBounds().isValid()) map.fitBounds(draftLine.getBounds(), { padding: [35, 35] });
+  }
+
+  function stopDrawing() {
+    drawing = false;
+    map?.off('click', handleMapClick);
+    map?.getContainer().classList.remove('works-drawing-mode');
+    const button = $('createWorksRoute');
+    if (button) button.textContent = '🚧 Créer un itinéraire travaux';
+  }
+
+  async function handleMapClick(event) {
+    if (!drawing) return;
+    controlPoints.push({ lat: event.latlng.lat, lng: event.latlng.lng });
+    if (controlPoints.length === 1) {
+      if (!draftLayer) draftLayer = L.layerGroup().addTo(map);
+      L.marker(event.latlng, { draggable: true }).bindTooltip('Point de départ').addTo(draftLayer);
+      return;
+    }
+    controlPoints = controlPoints.slice(0, 2);
+    stopDrawing();
+    await calculateRoadRoute(true);
+    openForm();
+  }
+
+  function startDrawing() {
+    if (!map) return alert('La carte n’est pas encore prête.');
+    clearDraft();
+    drawing = true;
+    map.on('click', handleMapClick);
+    map.getContainer().classList.add('works-drawing-mode');
+    const button = $('createWorksRoute');
+    if (button) button.textContent = 'Cliquez sur le départ puis l’arrivée…';
+  }
+
+  function openForm(record = null) {
+    const dialog = $('worksRouteDialog');
+    if (!dialog) return;
+    $('worksRouteId').value = record?.id || '';
+    if (!record) {
+      $('worksRouteTitle').value = '';
+      $('worksRouteStart').value = '';
+      $('worksRouteEnd').value = '';
+      $('worksRouteComment').value = '';
+      if ($('worksRouteType')) $('worksRouteType').value = 'travaux';
+    }
+    if (record) {
+      $('worksRouteTitle').value = record.title || '';
+      $('worksRouteStart').value = record.startDate || '';
+      $('worksRouteEnd').value = record.endDate || '';
+      $('worksRouteComment').value = record.comment || '';
+      if ($('worksRouteType')) $('worksRouteType').value = record.routeType === 'deviation' ? 'deviation' : 'travaux';
+      controlPoints = (record.controlPoints || record.points || []).map(p => ({ ...p }));
+      routedPoints = (record.routePoints || record.points || []).map(p => ({ ...p }));
+      drawDraft(true);
+      calculateRoadRoute(false);
+    }
+    $('worksRouteType')?.dispatchEvent(new Event('change'));
+    dialog.showModal?.() || dialog.setAttribute('open', '');
+  }
+
+  function startWaypointPicking() {
+    if (controlPoints.length < 2) return alert('Créez d’abord le départ et l’arrivée.');
+    $('worksRouteDialog')?.close();
+    waypointPicking = true;
+    map.getContainer().classList.add('works-drawing-mode');
+    setRoutingStatus('Cliquez sur la rue par laquelle le chantier doit passer.');
+    const onPick = async event => {
+      map.off('click', onPick);
+      waypointPicking = false;
+      map.getContainer().classList.remove('works-drawing-mode');
+      controlPoints.splice(controlPoints.length - 1, 0, { lat: event.latlng.lat, lng: event.latlng.lng });
+      await calculateRoadRoute(true);
+      openForm();
+    };
+    map.on('click', onPick);
+  }
+
+  async function clearWaypoints() {
+    if (controlPoints.length > 2) controlPoints = [controlPoints[0], controlPoints[controlPoints.length - 1]];
+    await calculateRoadRoute(true);
+  }
+
+  async function submitForm(event) {
+    event.preventDefault();
+    if (controlPoints.length < 2) return alert('Sélectionnez d’abord un point de départ et un point d’arrivée.');
+    const id = $('worksRouteId').value || `works-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const record = {
+      id,
+      routeType: $('worksRouteType')?.value === 'deviation' ? 'deviation' : 'travaux',
+      title: $('worksRouteTitle').value.trim() || ($('worksRouteType')?.value === 'deviation' ? 'Déviation' : 'Travaux'),
+      startDate: $('worksRouteStart').value,
+      endDate: $('worksRouteEnd').value,
+      comment: $('worksRouteComment').value.trim(),
+      controlPoints: controlPoints.map(p => ({ lat: p.lat, lng: p.lng })),
+      routePoints: (routedPoints.length >= 2 ? routedPoints : controlPoints).map(p => ({ lat: p.lat, lng: p.lng })),
+      updatedAt: new Date().toISOString()
+    };
+    const index = records.findIndex(item => item.id === id);
+    if (index >= 0) records[index] = record; else records.push(record);
+    saveLocal();
+    try { await upsertCloud(record); } catch (error) { console.warn('Travaux sauvegardés localement, synchronisation différée.', error); }
+    $('worksRouteDialog').close();
+    clearDraft();
+    worksVisible = true;
+    render();
+    document.dispatchEvent(new CustomEvent('breizhstops:works-updated'));
+  }
+
+  function editRecord(id) { const record = records.find(item => item.id === id); if (record) openForm(record); }
+  async function deleteRecord(id) {
+    const record = records.find(item => item.id === id);
+    if (!record || !confirm(`Supprimer « ${record.title || routeMeta(record).label} » ?`)) return;
+    records = records.filter(item => item.id !== id); saveLocal();
+    try { await deleteCloud(id); } catch (error) { console.warn('Suppression locale effectuée, suppression cloud non confirmée.', error); }
+    map?.closePopup(); render();
+  }
+
+  function injectWorksToggle() {
+    const body = $('visibleLinesBody');
+    if (!body || body.querySelector('#toggleWorksLayer') || body.querySelector('#toggleDeviationsLayer')) return;
+    const block = document.createElement('div');
+    block.className = 'floating-works-layer';
+    const worksCount = records.filter(item => item.routeType !== 'deviation').length;
+    const deviationsCount = records.filter(item => item.routeType === 'deviation').length;
+    block.innerHTML = `
+      <div class="floating-special-layers-title">🗺️ Couches temporaires</div>
+      <label class="floating-layer-choice works-choice">
+        <input type="checkbox" id="toggleWorksLayer" ${worksVisible ? 'checked' : ''}>
+        <span class="floating-layer-icon">🚧</span>
+        <span class="floating-layer-text"><strong>Travaux</strong><small>Segments orange</small></span>
+        <b class="floating-layer-count" data-count-type="travaux">${worksCount}</b>
+      </label>
+      <label class="floating-layer-choice deviations-choice">
+        <input type="checkbox" id="toggleDeviationsLayer" ${deviationsVisible ? 'checked' : ''}>
+        <span class="floating-layer-icon">↪</span>
+        <span class="floating-layer-text"><strong>Déviations</strong><small>Segments verts</small></span>
+        <b class="floating-layer-count" data-count-type="deviation">${deviationsCount}</b>
+      </label>`;
+    body.prepend(block);
+    $('toggleWorksLayer')?.addEventListener('change', event => { worksVisible = event.target.checked; render(); });
+    $('toggleDeviationsLayer')?.addEventListener('change', event => { deviationsVisible = event.target.checked; render(); });
+  }
+
+  function syncWorksToggle() {
+    injectWorksToggle();
+    const worksToggle = $('toggleWorksLayer'); if (worksToggle) worksToggle.checked = worksVisible;
+    const deviationsToggle = $('toggleDeviationsLayer'); if (deviationsToggle) deviationsToggle.checked = deviationsVisible;
+    const worksCount = document.querySelector('[data-count-type="travaux"]');
+    const deviationsCount = document.querySelector('[data-count-type="deviation"]');
+    if (worksCount) worksCount.textContent = records.filter(item => item.routeType !== 'deviation').length;
+    if (deviationsCount) deviationsCount.textContent = records.filter(item => item.routeType === 'deviation').length;
+  }
+
+  function cancelEditing() {
+    $('worksRouteDialog')?.close();
+    clearDraft(); stopDrawing();
+    waypointPicking = false;
+    map?.getContainer().classList.remove('works-drawing-mode');
+  }
+
+  async function init() {
+    map = getMap(); if (!map || !window.L) return false;
+    loadLocal(); layerGroup = L.layerGroup().addTo(map); draftLayer = L.layerGroup().addTo(map); render();
+    await synchronize(); render();
+    $('createWorksRoute')?.addEventListener('click', startDrawing);
+    $('worksRouteForm')?.addEventListener('submit', submitForm);
+    $('worksRouteType')?.addEventListener('change', () => {
+      const type = $('worksRouteType').value === 'deviation' ? 'deviation' : 'travaux';
+      const meta = routeMeta({ routeType: type });
+      const heading = $('worksRouteDialogTitle');
+      if (heading) heading.textContent = `${meta.icon} Itinéraire ${meta.label.toLowerCase()}`;
+      const submit = $('saveWorksRoute');
+      if (submit) submit.textContent = `💾 Enregistrer ${type === 'deviation' ? 'la déviation' : 'les travaux'}`;
+      if (controlPoints.length >= 2) drawDraft(false);
+    });
+    $('addWorksWaypoint')?.addEventListener('click', startWaypointPicking);
+    $('clearWorksWaypoints')?.addEventListener('click', clearWaypoints);
+    [$('cancelWorksRoute'), $('cancelWorksRouteFooter')].filter(Boolean).forEach(button => button.addEventListener('click', cancelEditing));
+    document.addEventListener('click', event => {
+      const edit = event.target.closest('[data-work-edit]'); if (edit) editRecord(edit.dataset.workEdit);
+      const del = event.target.closest('[data-work-delete]'); if (del) deleteRecord(del.dataset.workDelete);
+    });
+    const observer = new MutationObserver(syncWorksToggle);
+    const target = $('visibleLinesBody'); if (target) observer.observe(target, { childList: true, subtree: false });
+    syncWorksToggle();
+    window.BreizhStopsWorksApi = {
+      getAll: () => records.map(item => structuredClone(item)),
+      setVisible: visible => { worksVisible = Boolean(visible); deviationsVisible = Boolean(visible); render(); },
+      setWorksVisible: visible => { worksVisible = Boolean(visible); render(); },
+      setDeviationsVisible: visible => { deviationsVisible = Boolean(visible); render(); },
+      startDrawing
+    };
+    return true;
+  }
+
+  let initializing = false;
+  const timer = setInterval(async () => {
+    if (initializing) return;
+    initializing = true;
+    try { if (await init()) clearInterval(timer); } finally { initializing = false; }
+  }, 150);
+  setTimeout(() => clearInterval(timer), 15000);
+})();

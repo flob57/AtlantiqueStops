@@ -1,0 +1,408 @@
+:root {
+  color-scheme: dark;
+  --bg: #040806;
+  --panel: #0e1511;
+  --panel2: #151e18;
+  --border: #354038;
+  --text: #f5f7f5;
+  --muted: #a9b4ad;
+  --green: #7fe336;
+  --orange: #ffb13c;
+  --red: #ff625a;
+  --blue: #0a5f9f;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+button, a { font: inherit; }
+button, .toolbar a {
+  padding: 9px 13px;
+  border: 1px solid #3b4740;
+  border-radius: 9px;
+  background: #101813;
+  color: white;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+.departures-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: max(13px, env(safe-area-inset-top)) 18px 13px;
+  border-bottom: 1px solid #263029;
+  background: rgba(4,8,6,.96);
+  backdrop-filter: blur(12px);
+}
+.back-link { color: #ccd5cf; text-decoration: none; font-size: 12px; }
+h1 { margin: 5px 0 2px; font-size: 23px; }
+.version {
+  display: inline-block;
+  padding: 2px 6px;
+  border: 1px solid #536159;
+  border-radius: 999px;
+  color: #bdc8c1;
+  font-size: 9px;
+  vertical-align: middle;
+}
+.departures-header p { margin: 0; color: var(--muted); font-size: 12px; }
+.header-actions { display: flex; align-items: center; gap: 10px; }
+#clock { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.departures-page { width: min(1200px, 100%); margin: auto; padding: 18px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+#profileLabel {
+  margin-left: auto;
+  padding: 8px 11px;
+  border: 1px solid #34423a;
+  border-radius: 999px;
+  color: #cad4ce;
+  font-size: 12px;
+}
+.message { margin-top: 12px; padding: 11px 13px; border-radius: 9px; background: #142945; }
+.message.error { background: #431b1b; }
+.intro { color: var(--muted); font-size: 13px; }
+h2 { margin: 22px 0 9px; font-size: 16px; }
+.board {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+}
+.running-card { border-bottom: 1px solid #354038; background: var(--panel); }
+.running-card:last-child { border-bottom: 0; }
+.running-main {
+  display: grid;
+  grid-template-columns: 80px 1.2fr 1.2fr 1.2fr 1fr 70px 1.25fr 90px 38px;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+}
+.running-main > div { min-width: 0; overflow-wrap: anywhere; }
+.label { display: none; color: var(--muted); font-size: 10px; text-transform: uppercase; }
+.time { font-weight: 850; font-variant-numeric: tabular-nums; }
+.course { color: var(--orange); font-weight: 800; }
+.trace-button { padding: 5px 8px; }
+.thermometer {
+  display: none;
+  overflow-x: auto;
+  padding: 18px 18px 24px;
+  background: #111a14;
+}
+.running-card.open .thermometer { display: block; }
+.thermo-track {
+  position: relative;
+  display: flex;
+  min-width: max-content;
+  padding-top: 18px;
+}
+.thermo-line {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  top: 25px;
+  height: 6px;
+  border-radius: 999px;
+  background: #4c5550;
+}
+.thermo-progress {
+  position: absolute;
+  left: 28px;
+  top: 25px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--green);
+}
+.thermo-stop {
+  position: relative;
+  width: 115px;
+  padding-top: 20px;
+  text-align: center;
+  z-index: 2;
+}
+.dot {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translateX(-50%);
+  border: 3px solid #68716c;
+  border-radius: 50%;
+  background: #111a14;
+}
+.thermo-stop.done .dot,
+.thermo-stop.next .dot { border-color: var(--green); }
+.thermo-stop.done .dot { background: var(--green); }
+.bus {
+  position: absolute;
+  top: -12px;
+  transform: translateX(-50%);
+  font-size: 24px;
+  z-index: 4;
+}
+.stop-time { font-size: 11px; color: #d5ddd8; font-weight: 700; }
+.stop-name { margin-top: 4px; max-width: 105px; color: #bbc5bf; font-size: 11px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 11px; }
+table { width: 100%; border-collapse: collapse; background: var(--panel); }
+th, td { padding: 12px; border-bottom: 1px solid #313b35; white-space: nowrap; text-align: left; }
+th { background: var(--panel2); color: #b6c0ba; font-size: 10px; text-transform: uppercase; }
+tr.warning { background: #361919; }
+.minutes { font-weight: 800; font-variant-numeric: tabular-nums; }
+.minutes.urgent { color: var(--red); }
+.validated { color: var(--green); font-weight: 800; }
+.not-validated { color: var(--red); font-weight: 800; }
+.empty { padding: 25px; border: 1px solid var(--border); border-radius: 10px; color: var(--muted); text-align: center; }
+.board:not(:empty) + .empty, tbody:not(:empty) ~ .empty { display: none; }
+
+@media (max-width: 760px) {
+  .departures-page { padding: 10px; }
+  .toolbar { display: grid; grid-template-columns: 1fr 1fr; }
+  #syncButton, #profileLabel { grid-column: 1 / -1; }
+  #profileLabel { margin-left: 0; border-radius: 8px; }
+  .running-main {
+    grid-template-columns: 70px 1fr auto;
+    gap: 7px;
+  }
+  .running-main > div:nth-child(n+4):not(:last-child) { grid-column: 2 / 4; }
+  .label { display: inline; margin-right: 5px; }
+  .trace-button { grid-column: 3; grid-row: 1; }
+  .thermo-stop { width: 100px; }
+  h1 { font-size: 20px; }
+}
+
+/* V6.7 — identité Océlorn */
+body { background: radial-gradient(circle at top right, rgba(89,145,45,.08), transparent 35%), #040806; }
+button, .toolbar-link, .toolbar a { transition: transform .15s ease, border-color .15s ease; }
+button:hover, .toolbar-link:hover, .toolbar a:hover { transform: translateY(-1px); border-color: #7be12d; }
+.version { color: #bfe7a4; border-color: #52733c; }
+
+
+/* ==================================================================
+   V8.2 — page Départs optimisée pour iPhone et diagramme libre
+   ================================================================== */
+
+.thermometer {
+  cursor: grab;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.thermometer.dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.thermo-track {
+  padding-bottom: 4px;
+}
+
+/* Le navigateur ne doit jamais recentrer automatiquement la timeline */
+.thermometer,
+.thermo-track {
+  scroll-behavior: auto !important;
+  scroll-snap-type: none !important;
+}
+
+@media (max-width: 760px) {
+  .departures-header {
+    align-items: flex-end;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .header-actions {
+    align-items: center;
+  }
+
+  #clock {
+    font-size: 22px;
+  }
+
+  .departures-page {
+    padding: 12px;
+  }
+
+  .toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .toolbar button,
+  .toolbar a {
+    width: 100%;
+    min-height: 52px;
+    font-size: 16px;
+    text-align: center;
+  }
+
+  #profileLabel {
+    grid-column: auto;
+    width: 100%;
+    margin: 0;
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .intro {
+    font-size: 15px;
+    line-height: 1.45;
+  }
+
+  h2 {
+    margin-top: 28px;
+    font-size: 21px;
+  }
+
+  .board {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .running-card {
+    margin-bottom: 14px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: linear-gradient(145deg, #101a13, #0b120d);
+  }
+
+  .running-main {
+    position: relative;
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 10px 14px;
+    padding: 18px 16px;
+  }
+
+  .running-main > div {
+    grid-column: auto !important;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    font-size: 17px;
+  }
+
+  .running-main .time {
+    grid-column: 1;
+    grid-row: 1;
+    font-size: 20px;
+  }
+
+  .running-main .course {
+    grid-column: 2;
+    grid-row: 1;
+    padding-right: 50px;
+    font-size: 19px;
+  }
+
+  .running-main > div:nth-child(3),
+  .running-main > div:nth-child(4),
+  .running-main > div:nth-child(5),
+  .running-main > div:nth-child(6),
+  .running-main > div:nth-child(7),
+  .running-main > div:nth-child(8) {
+    grid-column: 1 / -1 !important;
+    padding-left: 92px;
+  }
+
+  .label {
+    display: inline-block;
+    min-width: 112px;
+    margin-right: 8px;
+    font-size: 11px;
+  }
+
+  .trace-button {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border-color: #4a5b50;
+    font-size: 23px;
+  }
+
+  .running-card.open .trace-button {
+    border-color: var(--green);
+  }
+
+  .thermometer {
+    width: 100%;
+    padding: 22px 15px 26px;
+    border-top: 1px solid #27332b;
+  }
+
+  .thermo-stop {
+    width: 125px;
+  }
+
+  .stop-time {
+    font-size: 13px;
+  }
+
+  .stop-name {
+    max-width: 118px;
+    font-size: 13px;
+  }
+
+  .bus {
+    font-size: 27px;
+  }
+
+  /* Tableau des prochains départs : défilement horizontal stable */
+  .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  table {
+    min-width: 900px;
+  }
+
+  th, td {
+    padding: 14px 12px;
+    font-size: 15px;
+  }
+
+  th {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 430px) {
+  .running-main {
+    grid-template-columns: 78px 1fr;
+    padding: 16px 13px;
+  }
+
+  .running-main > div:nth-child(3),
+  .running-main > div:nth-child(4),
+  .running-main > div:nth-child(5),
+  .running-main > div:nth-child(6),
+  .running-main > div:nth-child(7),
+  .running-main > div:nth-child(8) {
+    padding-left: 78px;
+  }
+
+  .label {
+    min-width: 102px;
+  }
+}
+
+
+/* V10.5 — carte théorique des véhicules */
+.fleet-map-section{margin-top:30px}.map-title{display:flex;justify-content:space-between;align-items:end;gap:15px}.map-title h2{margin-bottom:4px}.map-title p{margin:0 0 10px;color:var(--muted);font-size:13px}.map-title span{margin-bottom:10px;padding:7px 10px;border:1px solid #405048;border-radius:999px;color:var(--green);font-size:12px;font-weight:900}#fleetMap{height:520px;border:1px solid var(--border);border-radius:14px;background:#0c140f;overflow:hidden}.qub-bus-marker{background:transparent;border:0}.qub-bus-marker img{width:66px;height:38px;object-fit:contain;filter:drop-shadow(0 4px 5px rgba(0,0,0,.65))}.bus-popup{min-width:210px;color:#172019}.bus-popup strong{font-size:16px}.bus-popup-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;margin-top:9px}.bus-popup-grid span:nth-child(odd){color:#667269}.leaflet-popup-content-wrapper{border-radius:12px}@media(max-width:760px){#fleetMap{height:430px}.map-title{align-items:flex-start;flex-direction:column}.map-title span{margin:0 0 8px}}

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#050806">
+  <title>Importer un planning — BreizhStops V10.6</title>
+  <link rel="stylesheet" href="./planning-import.css">
+</head>
+<body>
+<header>
+  <a href="./index.html">‹ Accueil</a>
+  <div><span>IMPORT INTELLIGENT</span><h1>📷 Importer un planning <small>V10.6</small></h1></div>
+</header>
+<main>
+  <section class="upload-card">
+    <label>Type de planning
+      <select id="planningType">
+        <option value="vehicle">Planning véhicules</option>
+        <option value="workshop">Planning atelier</option>
+        <option value="driver">Planning conducteurs</option>
+      </select>
+    </label>
+    <label>Date attendue
+      <input id="planningDate" type="date">
+    </label>
+    <label class="file-zone">
+      <input id="planningImage" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+      <strong>Déposer ou choisir une capture d’écran</strong>
+      <span>PNG, JPEG ou WEBP — 12 Mo maximum</span>
+    </label>
+    <img id="preview" alt="Aperçu" hidden>
+    <button id="analyzeButton" type="button">✨ Analyser la capture</button>
+    <p id="message"></p><pre id="diagnosticLog" class="diagnostic-log"></pre>
+  </section>
+
+  <section id="resultSection" class="result-card" hidden>
+    <div class="result-heading">
+      <div><span>CONTRÔLE AVANT ENREGISTREMENT</span><h2>Données détectées</h2></div>
+      <strong id="detectedCount">0</strong>
+    </div>
+    <div id="resultTable" class="result-table"></div>
+    <div class="actions">
+      <button id="saveButton" type="button">✓ Valider et enregistrer</button>
+      <button id="cancelButton" type="button" class="secondary">Annuler</button>
+    </div>
+  </section>
+
+  <section class="help-card">
+    <h2>Fonctionnement</h2>
+    <p>Le site effectue une lecture générale puis une seconde lecture ciblée sur les noms, numéros de parc, dates et immatriculations. Les rapprochements avec « Mon Parc » et la liste des conducteurs sont automatiques.</p>
+    <p>Pour les véhicules, le numéro de parc Océlorn est automatiquement rapproché de l’immatriculation enregistrée dans la base Notion « Mon parc ».</p>
+    <p>Au premier usage, le navigateur télécharge le moteur OCR. Une connexion Internet est donc nécessaire. La progression détaillée apparaît sous le bouton d’analyse.</p>
+  </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script src="./planning-import.js?v=10.9"></script>
+</body>
+</html>

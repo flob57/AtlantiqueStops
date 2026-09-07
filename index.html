@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050806">
+  <title>Océlorn — Tableau de bord V10.5</title>
+  <link rel="stylesheet" href="./home.css">
+</head>
+<body>
+  <header class="home-topbar">
+    <div class="home-brand">
+      <span class="brand-mark">O</span>
+      <div>
+        <strong>Mon dépôt</strong>
+        <span>Océlorn · BreizhStops</span>
+      </div>
+    </div>
+    <span class="version-pill">V10.5</span>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <p class="eyebrow">TABLEAU DE BORD D’EXPLOITATION</p>
+        <h1>Bonjour Florian</h1>
+        <p id="homeDate" class="hero-date">Chargement de la date…</p>
+
+        <div class="coach-clock" aria-label="Horloge d’autocar">
+          <div id="digitalTime" class="digital-time">--:--</div>
+          <div class="stop-request">
+            <span class="request-led"></span>
+            <span>ARRÊT<br>DEMANDÉ</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dashboard-grid">
+      <article class="status-card">
+        <div class="card-heading">
+          <div>
+            <span class="section-kicker">AUJOURD’HUI</span>
+            <h2>Prises de service</h2>
+          </div>
+          <img src="./assets/today-london-bus-v69.png" alt="Bus londonien" class="card-vehicle london">
+        </div>
+        <div class="validation-meter">
+          <strong id="validatedCount">— / —</strong>
+          <span>services validés</span>
+          <div class="meter-track"><span id="validationProgress"></span></div>
+        </div>
+        <p id="nextDuty" class="next-info">Chargement des services…</p>
+
+        <a href="./prises-service.html" class="primary-link">Ouvrir les prises de service →</a>
+
+
+        <section class="today-todos" aria-labelledby="todayTodosTitle">
+          <div class="today-todos-heading">
+            <div>
+              <span class="section-kicker">À FAIRE AUJOURD’HUI</span>
+              <h3 id="todayTodosTitle">Mes tâches</h3>
+            </div>
+            <span id="todoCount" class="todo-count">—</span>
+          </div>
+          <div id="todoMessage" class="todo-message">Chargement des tâches…</div>
+          <div id="todoList" class="todo-list"></div>
+        </section>
+
+        <div class="work-activity" id="workActivity">
+          <div class="activity-title">
+            <strong>Mon activité</strong>
+            <span id="workStateBadge" class="activity-badge">Hors poste</span>
+          </div>
+
+          <div class="activity-counters">
+            <div><span>Temps de travail</span><strong id="workCounter">0h00</strong></div>
+            <div><span>Temps de conduite</span><strong id="drivingCounter">0h00</strong></div>
+          </div>
+          <div class="activity-actions">
+            <button id="workToggle" class="activity-button primary">▶ Prendre mon poste</button>
+            <button id="driveToggle" class="activity-button" hidden>🛞 Prendre le volant</button>
+            <button id="fuelButton" class="activity-button" hidden>⛽ Enregistrer un plein</button>
+            <a id="saeShortcut" href="./breizhstops.html?open=sae" class="activity-button link" hidden>🚌 Ouvrir le SAE</a>
+            <button id="declareHoursButton" class="activity-button">📝 Déclarer mes heures</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="module-card depot-card">
+        <div class="module-photo depot-photo"></div>
+        <div class="module-content">
+          <span class="section-kicker green">GESTION DU DÉPÔT</span>
+          <h2>Exploitation quotidienne</h2>
+          <p>Valider les prises de service et suivre les courses en circulation comme sur un tableau de gare.</p>
+          <div class="module-links">
+            <a href="./prises-service.html">🚌 Prises de service</a>
+            <a href="./departs.html">🚉 Départs</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="module-card parking-card">
+        <div class="module-photo parking-photo"></div>
+        <div class="module-content">
+          <span class="section-kicker green">STATIONNEMENT</span>
+          <h2>Plans des dépôts</h2>
+          <p>Visualiser les affectations de Lestonan, Gourvily et des emplacements extérieurs.</p>
+          <a href="./stationnement.html" class="primary-link">Ouvrir le stationnement →</a>
+        </div>
+      </article>
+
+
+      <article class="module-card fleet-card">
+        <div class="module-photo fleet-photo"><img src="./assets/qub-coach-marker.png" alt="Autocar QUB"></div>
+        <div class="module-content">
+          <span class="section-kicker green">GESTION DU PARC</span>
+          <h2>Mon parc</h2>
+          <p>Retrouver les véhicules classés par état, leurs photos, numéros de parc, société et âge.</p>
+          <div class="module-links"><a href="./mon-parc.html">🚍 Mon parc</a><a href="./pdvv.html">📟 PDVV</a></div>
+        </div>
+      </article>
+
+
+      <article class="module-card import-planning-card">
+        <div class="module-photo import-planning-photo"></div>
+        <div class="module-content">
+          <span class="section-kicker green">MAINTENANCE</span>
+          <h2>Rendez-vous atelier</h2>
+          <p>Ajouter manuellement un rendez-vous, choisir le véhicule, la date et le type d’intervention.</p>
+          <div class="module-links">
+            <a href="./atelier.html">🔧 Gérer les rendez-vous</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="module-card breizh-card">
+        <div class="breizh-visual road-map-visual">
+          <div class="map-visual-overlay"></div>
+          <img src="./assets/breizhstops-coach-v69.png" alt="Car BreizhStops" class="breizh-coach">
+          <span class="map-visual-label">BRETAGNE · FINISTÈRE</span>
+        </div>
+        <div class="module-content">
+          <span class="section-kicker">BREIZHSTOPS</span>
+          <h2>Cartographie et SAE</h2>
+          <p>Rechercher les arrêts, créer des itinéraires, ouvrir le GPS et lancer le SAE personnel.</p>
+          <a href="./breizhstops.html" class="primary-link dark">Entrer dans BreizhStops →</a>
+        </div>
+      </article>
+
+      <article class="module-card tachy-home-card" id="tachyHomeCard">
+        <div class="tachy-home-visual">
+          <div id="tachyDonut" class="tachy-donut" role="img" aria-label="Répartition des échéances tachygraphe">
+            <div class="tachy-donut-center"><strong id="tachyTotal">—</strong><span>cars en service</span></div>
+          </div>
+          <div class="tachy-legend" aria-label="Légende">
+            <span><i class="late"></i><b id="tachyLate">—</b> en retard</span>
+            <span><i class="soon"></i><b id="tachySoon">—</b> à vider</span>
+            <span><i class="current"></i><b id="tachyCurrent">—</b> à jour</span>
+          </div>
+        </div>
+        <div class="module-content">
+          <span class="section-kicker green">CHRONOTACHYGRAPHES</span>
+          <h2>Vidange Tachy</h2>
+          <p id="tachyHomeMessage">Chargement des échéances de déchargement…</p>
+          <a href="./tachy.html" class="primary-link">Voir les véhicules →</a>
+        </div>
+      </article>
+
+      <article class="module-card activity-module-card">
+        <div class="stats-visual tachograph-stats-visual">
+          <img src="./assets/tachograph-activity.png" alt="Disque de chronotachygraphe">
+          <div class="tachograph-shade"></div>
+          <div class="tachograph-overtime">
+            <span id="homeOvertime">+12h00</span>
+            <small>HEURES SUPPLÉMENTAIRES</small>
+          </div>
+        </div>
+        <div class="module-content">
+          <span class="section-kicker green">MON ACTIVITÉ</span>
+          <h2>Prise de poste et statistiques</h2>
+          <p>Consulter tes heures réelles et déclarées, tes conduites, tes kilométrages, tes pleins et tes compteurs.</p>
+          <div class="module-links">
+            <a href="./statistiques.html">📊 Mes statistiques</a>
+            <button id="declareHoursButtonCard" class="module-button">📝 Déclarer mes heures</button>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <dialog id="drivingDialog" class="home-dialog">
+    <form id="drivingForm" method="dialog">
+      <h2>🛞 Prendre le volant</h2>
+      <label>Véhicule
+        <select id="drivingVehicle" required></select>
+      </label>
+      <div id="drivingVehicleCard" class="driving-vehicle-card-host"></div>
+      <label>Kilométrage de départ
+        <input id="drivingKmStart" type="number" min="0" step="1" required>
+      </label>
+      <div class="dialog-actions"><button value="cancel">Annuler</button><button id="confirmDrivingStart" value="default">Démarrer</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="drivingEndDialog" class="home-dialog">
+    <form id="drivingEndForm" method="dialog">
+      <h2>Terminer la conduite</h2>
+      <div id="drivingEndVehicleCard" class="driving-vehicle-card-host"></div>
+      <div class="driving-duration-preview"><span>Temps de conduite</span><strong id="drivingEndDuration">—</strong></div>
+      <label>Kilométrage d’arrivée
+        <input id="drivingKmEnd" type="number" min="0" step="1" required>
+      </label>
+      <div class="dialog-actions"><button value="cancel">Annuler</button><button value="default">Terminer</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="fuelDialog" class="home-dialog">
+    <form id="fuelForm" method="dialog">
+      <h2>⛽ Enregistrer un plein</h2>
+      <p id="fuelVehicleLabel"></p>
+      <label>Kilométrage
+        <input id="fuelKm" type="number" min="0" step="1" required>
+      </label>
+      <label>Litres
+        <input id="fuelLitres" type="number" min="0.01" step="0.01" required>
+      </label>
+      <label>Note
+        <input id="fuelNotes" type="text">
+      </label>
+      <div class="dialog-actions"><button value="cancel">Annuler</button><button value="default">Enregistrer</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="declareDialog" class="home-dialog declare-dialog">
+    <form id="declareForm" method="dialog">
+      <h2>📝 Déclarer mes heures</h2>
+      <label>Date <input id="declareDate" type="date" required></label>
+      <div class="time-grid">
+        <label>Matin — début <input id="morningStart" type="time"></label>
+        <label>Matin — fin <input id="morningEnd" type="time"></label>
+        <label>Après-midi — début <input id="afternoonStart" type="time"></label>
+        <label>Après-midi — fin <input id="afternoonEnd" type="time"></label>
+      </div>
+      <label>Commentaire <textarea id="declareNotes" rows="3"></textarea></label>
+      <p id="declareTotal">Total : 0h00</p>
+      <div class="dialog-actions"><button value="cancel">Annuler</button><button value="default">Enregistrer</button></div>
+    </form>
+  </dialog>
+
+  
+      <section class="home-status-grid" aria-label="Informations d'exploitation">
+        <article class="status-panel workshop-panel">
+          <div class="status-panel-heading">
+            <div>
+              <span class="section-kicker">MAINTENANCE</span>
+              <h2>Véhicules à l’atelier</h2>
+            </div>
+            <span id="workshopCount" class="status-count">—</span>
+          </div>
+          <div id="workshopMessage" class="status-message">Chargement…</div>
+          <div id="workshopCards" class="mini-card-grid"></div>
+        </article>
+
+        <article class="status-panel appointment-panel">
+          <div class="status-panel-heading">
+            <div>
+              <span class="section-kicker">AGENDA ATELIER</span>
+              <h2>Prochains rendez-vous</h2>
+            </div>
+            <span id="appointmentCount" class="status-count">—</span>
+          </div>
+          <div id="appointmentMessage" class="status-message">Chargement…</div>
+          <div id="appointmentCards" class="mini-card-grid"></div>
+          <a class="panel-link" href="./atelier.html">Gérer les rendez-vous →</a>
+        </article>
+
+        <article class="status-panel sickleave-panel">
+          <div class="status-panel-heading">
+            <div>
+              <span class="section-kicker">ÉQUIPE</span>
+              <h2>Conducteurs en arrêt</h2>
+            </div>
+            <span id="sickleaveCount" class="status-count">—</span>
+          </div>
+          <div id="sickleaveMessage" class="status-message">Chargement…</div>
+          <div id="sickleaveCards" class="mini-card-grid"></div>
+        </article>
+      </section>
+
+      <section class="roadworks-section" aria-labelledby="roadworksTitle">
+        <div class="roadworks-heading"><div><span class="section-kicker">EXPLOITATION</span><h2 id="roadworksTitle">🚧 Travaux et déviations</h2></div><span id="roadworksCount" class="status-count">—</span></div>
+        <div id="roadworksMessage" class="status-message">Chargement…</div>
+        <div class="roadworks-columns"><div><h3>En cours</h3><div id="roadworksCurrent" class="roadworks-list"></div></div><div><h3>À venir</h3><div id="roadworksUpcoming" class="roadworks-list"></div></div></div>
+      </section>
+
+<footer>Océlorn · Outil personnel d’exploitation · BreizhStops V11.0</footer>
+  <script src="./home.js"></script>
+</body>
+</html>

@@ -1,0 +1,522 @@
+const $ = id => document.getElementById(id);
+let clockState = { work: null, driving: null };
+let vehicles = [];
+let vehicleDetails = new Map();
+let drivingEndTimer = null;
+
+function parisDate() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"
+  }).format(new Date());
+}
+function fmtMinutes(total) {
+  total = Math.max(0, Math.round(Number(total || 0)));
+  return `${Math.floor(total/60)}h${String(total%60).padStart(2,"0")}`;
+}
+function updateClock() {
+  const now = new Date();
+  $("digitalTime").textContent = new Intl.DateTimeFormat("fr-FR", {
+    timeZone:"Europe/Paris", hour:"2-digit", minute:"2-digit", hour12:false
+  }).format(now);
+  $("homeDate").textContent = new Intl.DateTimeFormat("fr-FR", {
+    timeZone:"Europe/Paris", weekday:"long", day:"numeric", month:"long", year:"numeric"
+  }).format(now);
+}
+async function api(url, options={}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {"Content-Type":"application/json", ...(options.headers||{})}
+  });
+  const text = await response.text();
+  let payload;
+  try { payload = text ? JSON.parse(text) : {}; }
+  catch { throw new Error(`Réponse serveur illisible (${response.status}).`); }
+  if (!response.ok) throw new Error(payload.error || `Erreur ${response.status}`);
+  return payload;
+}
+function secondsUntil(time) {
+  const m=String(time||"").match(/(\d{1,2}):(\d{2})/); if(!m)return null;
+  const now=new Date(), target=new Date(now);
+  target.setHours(Number(m[1]),Number(m[2]),0,0);
+  return Math.round((target-now)/1000);
+}
+async function loadDashboard() {
+  try {
+    const payload=await api(`/api/duties/today?date=${encodeURIComponent(parisDate())}`);
+    const services=(payload.services||[]).filter(s=>String(s.driver_name||"").trim()||String(s.vehicle_registration||"").trim());
+    const validated=services.filter(s=>Number(s.validated)===1).length;
+    $("validatedCount").textContent=`${validated} / ${services.length}`;
+    $("validationProgress").style.width=services.length?`${Math.round(validated/services.length*100)}%`:"0%";
+    const next=services.map(service=>({service,seconds:secondsUntil(service.ps_time)}))
+      .filter(i=>i.seconds!==null&&i.seconds>=0).sort((a,b)=>a.seconds-b.seconds)[0];
+    $("nextDuty").textContent=next
+      ? `Prochaine prise de service à ${next.service.ps_time} · ${next.service.first_course||"service"} · ${next.service.driver_name||"conducteur non renseigné"}`
+      : services.length?"Toutes les prises de service prévues sont passées.":"Aucun service à effectuer aujourd’hui.";
+  } catch {
+    $("validatedCount").textContent="— / —";
+    $("nextDuty").textContent="Impossible de charger les prises de service pour le moment.";
+  }
+}
+async function loadVehicles(sync=false) {
+  if(sync) {
+    try { await api("/api/public/vehicles/sync",{method:"POST",body:"{}"}); } catch(e) { console.warn(e); }
+  }
+  // Le parc Notion reste la source de vérité pour la fiche véhicule.
+  // On le relit à chaque ouverture de la prise de volant afin d'inclure
+  // immédiatement les véhicules ajoutés dans Notion.
+  try {
+    const [fleet, stats]=await Promise.all([
+      api(`/api/fleet?v=${Date.now()}`),
+      api(`/api/timeclock/stats?v=${Date.now()}`).catch(()=>({driving_sessions:[],fuel_fillups:[]}))
+    ]);
+    const lastKm=new Map();
+    for(const row of (stats.driving_sessions||[])){
+      const reg=String(row.vehicle_registration||"").toUpperCase();
+      const km=row.km_end!=null ? Number(row.km_end) : Number(row.km_start);
+      if(reg && Number.isFinite(km)) lastKm.set(reg,Math.max(lastKm.get(reg)||0,km));
+    }
+    for(const row of (stats.fuel_fillups||[])){
+      const reg=String(row.vehicle_registration||"").toUpperCase();
+      const km=Number(row.odometer_km);
+      if(reg && Number.isFinite(km)) lastKm.set(reg,Math.max(lastKm.get(reg)||0,km));
+    }
+    vehicleDetails=new Map((fleet.vehicles||[]).map(v=>[
+      String(v.registration).toUpperCase(),
+      {...v,last_km:lastKm.get(String(v.registration).toUpperCase()) ?? null}
+    ]));
+    vehicles=(fleet.vehicles||[]).map(v=>v.registration).filter(Boolean);
+  } catch(e) {
+    console.warn("Parc Notion indisponible :",e);
+    const payload=await api("/api/timeclock/vehicles");
+    vehicles=payload.vehicles||[];
+  }
+  const select=$("drivingVehicle");
+  select.innerHTML=vehicles.length
+    ? vehicles.map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("")
+    : `<option value="">Aucun véhicule synchronisé</option>`;
+  renderSelectedVehicleCard();
+}
+async function refreshActivity() {
+  try {
+    clockState=await api("/api/timeclock/status");
+    const work=clockState.work, drive=clockState.driving;
+    $("workCounter").textContent=fmtMinutes(clockState.work_minutes_today);
+    $("drivingCounter").textContent=fmtMinutes(clockState.driving_minutes_today);
+    $("workStateBadge").textContent=drive?`Conduite · ${drive.vehicle_registration}`:work?"En poste":"Hors poste";
+    $("workStateBadge").classList.toggle("active",!!work);
+    $("workToggle").textContent=work?"■ Terminer mon poste":"▶ Prendre mon poste";
+    $("workToggle").classList.toggle("danger",!!work);
+    $("driveToggle").hidden=!work;
+    $("driveToggle").textContent=drive?"■ Terminer la conduite":"🛞 Prendre le volant";
+    $("fuelButton").hidden=!drive;
+    $("saeShortcut").hidden=!drive;
+  } catch(e) { console.error(e); }
+}
+async function toggleWork() {
+  try {
+    await api("/api/timeclock/work",{method:"POST",body:JSON.stringify({action:clockState.work?"stop":"start"})});
+    await refreshActivity();
+  } catch(e) { alert(e.message); }
+}
+async function toggleDriving() {
+  if(!clockState.driving) {
+    await loadVehicles(true);
+    $("drivingKmStart").value="";
+    renderSelectedVehicleCard();
+    $("drivingDialog").showModal();
+  } else {
+    $("drivingKmEnd").min=clockState.driving.km_start;
+    $("drivingKmEnd").value=clockState.driving.km_start;
+    renderDrivingEndCard();
+    $("drivingEndDialog").showModal();
+    updateDrivingEndDuration();
+    clearInterval(drivingEndTimer);
+    drivingEndTimer=setInterval(updateDrivingEndDuration,1000);
+  }
+}
+async function submitDrivingStart(e) {
+  e.preventDefault();
+  try {
+    await api("/api/timeclock/driving",{method:"POST",body:JSON.stringify({
+      action:"start",vehicle_registration:$("drivingVehicle").value,km_start:$("drivingKmStart").value
+    })});
+    $("drivingDialog").close(); e.target.reset(); await refreshActivity();
+  } catch(err){alert(err.message);}
+}
+async function submitDrivingEnd(e) {
+  e.preventDefault();
+  try {
+    await api("/api/timeclock/driving",{method:"POST",body:JSON.stringify({action:"stop",km_end:$("drivingKmEnd").value})});
+    clearInterval(drivingEndTimer);
+    $("drivingEndDialog").close(); e.target.reset(); await refreshActivity();
+  } catch(err){alert(err.message);}
+}
+function selectedVehicle() {
+  return vehicleDetails.get(String($("drivingVehicle")?.value || "").toUpperCase()) || {
+    registration:$("drivingVehicle")?.value || ""
+  };
+}
+function vehicleCardHtml(vehicle, kmLabel="Dernier kilométrage connu", kmValue="—") {
+  const cover=vehicle.cover_url
+    ? `<img class="driving-vehicle-cover" src="${escapeHtml(vehicle.cover_url)}" alt="">`
+    : `<div class="driving-vehicle-placeholder">🚌</div>`;
+  return `
+    <div class="driving-vehicle-card">
+      <div class="driving-vehicle-photo">${cover}</div>
+      <div class="driving-vehicle-info">
+        <div class="driving-vehicle-title">
+          <strong>${escapeHtml(vehicle.registration || "Véhicule")}</strong>
+          <span>Véhicule Notion</span>
+        </div>
+        <div class="driving-vehicle-grid">
+          <div><span>Parc Océlorn</span><strong>${escapeHtml(vehicle.ocelorn_number || "—")}</strong></div>
+          <div><span>N° QUB</span><strong>${escapeHtml(vehicle.qub_number || "—")}</strong></div>
+          <div><span>Immatriculation</span><strong>${escapeHtml(vehicle.registration || "—")}</strong></div>
+          <div><span>${escapeHtml(kmLabel)}</span><strong>${escapeHtml(String(kmValue))}</strong></div>
+        </div>
+      </div>
+    </div>`;
+}
+function renderSelectedVehicleCard() {
+  const card=$("drivingVehicleCard");
+  if(!card) return;
+  const vehicle=selectedVehicle();
+  card.innerHTML=vehicleCardHtml(vehicle,"Dernier kilométrage connu",vehicle.last_km == null ? "—" : `${vehicle.last_km} km`);
+}
+function renderDrivingEndCard() {
+  const card=$("drivingEndVehicleCard");
+  if(!card) return;
+  const vehicle=vehicleDetails.get(String(clockState.driving?.vehicle_registration||"").toUpperCase()) || {registration:clockState.driving?.vehicle_registration||""};
+  card.innerHTML=vehicleCardHtml(vehicle,"Kilométrage de départ",`${clockState.driving?.km_start ?? "—"} km`);
+}
+function updateDrivingEndDuration() {
+  const el=$("drivingEndDuration");
+  if(!el || !clockState.driving?.started_at) return;
+  const minutes=Math.max(0,Math.round((Date.now()-new Date(clockState.driving.started_at).getTime())/60000));
+  el.textContent=fmtMinutes(minutes);
+}
+$("drivingVehicle")?.addEventListener("change",renderSelectedVehicleCard);
+
+function openFuel() {
+  $("fuelVehicleLabel").textContent=`Véhicule : ${clockState.driving.vehicle_registration}`;
+  $("fuelKm").min=clockState.driving.km_start;
+  $("fuelKm").value=clockState.driving.km_start;
+  $("fuelDialog").showModal();
+}
+async function submitFuel(e) {
+  e.preventDefault();
+  try {
+    await api("/api/timeclock/fuel",{method:"POST",body:JSON.stringify({
+      odometer_km:$("fuelKm").value,litres:$("fuelLitres").value,notes:$("fuelNotes").value
+    })});
+    $("fuelDialog").close(); e.target.reset(); alert("Plein enregistré.");
+  } catch(err){alert(err.message);}
+}
+function declarationTotal() {
+  let total=0;
+  for(const [a,b] of [["morningStart","morningEnd"],["afternoonStart","afternoonEnd"]]){
+    if($(a).value&&$(b).value){
+      const [ah,am]=$(a).value.split(":").map(Number),[bh,bm]=$(b).value.split(":").map(Number);
+      total+=Math.max(0,bh*60+bm-ah*60-am);
+    }
+  }
+  $("declareTotal").textContent=`Total : ${fmtMinutes(total)}`;
+}
+async function openDeclaration() {
+  try {
+  const date=parisDate();
+  const payload=await api(`/api/timeclock/declarations?date=${date}`);
+  const d=payload.declaration||payload.prefill||{};
+  $("declareDate").value=date;
+  $("morningStart").value=d.morning_start||"";
+  $("morningEnd").value=d.morning_end||"";
+  $("afternoonStart").value=d.afternoon_start||"";
+  $("afternoonEnd").value=d.afternoon_end||"";
+  $("declareNotes").value=d.notes||"";
+  declarationTotal();
+  $("declareDialog").showModal();
+  } catch (e) { alert(e.message); }
+}
+async function submitDeclaration(e) {
+  e.preventDefault();
+  try {
+    await api("/api/timeclock/declarations",{method:"POST",body:JSON.stringify({
+      work_date:$("declareDate").value,morning_start:$("morningStart").value,morning_end:$("morningEnd").value,
+      afternoon_start:$("afternoonStart").value,afternoon_end:$("afternoonEnd").value,notes:$("declareNotes").value
+    })});
+    $("declareDialog").close(); alert("Heures déclarées enregistrées.");
+  } catch(err){alert(err.message);}
+}
+async function loadHomeStats() {
+  try {
+    const p=await api("/api/timeclock/stats");
+    const m=p.overtime_minutes;
+    const overtimeText=`${m>=0?"+":"−"}${fmtMinutes(Math.abs(m))}`;
+    $("homeOvertime").textContent=overtimeText;
+    if ($("activityOvertime")) $("activityOvertime").textContent=overtimeText;
+  } catch{}
+}
+
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+async function loadTodayTodos() {
+  const list = $("todoList");
+  const message = $("todoMessage");
+  const count = $("todoCount");
+
+  try {
+    const payload = await api(
+      `/api/todos/today?date=${encodeURIComponent(parisDate())}`
+    );
+    const tasks = payload.tasks || [];
+
+    count.textContent = tasks.length;
+    list.innerHTML = "";
+
+    if (!tasks.length) {
+      message.hidden = false;
+      message.textContent = "Aucune tâche restante aujourd’hui.";
+      return;
+    }
+
+    message.hidden = true;
+
+    list.innerHTML = tasks.map(task => `
+      <article class="todo-item" data-todo-id="${escapeHtml(task.id)}">
+        <input
+          class="todo-check"
+          type="checkbox"
+          aria-label="Marquer ${escapeHtml(task.title)} comme accomplie"
+        >
+        <span class="todo-title">${escapeHtml(task.title)}</span>
+        <span class="todo-kind ${task.kind === "unique" ? "unique" : ""}">
+          ${task.kind === "unique" ? "Date du jour" : "Récurrente"}
+        </span>
+      </article>
+    `).join("");
+  } catch (error) {
+    count.textContent = "!";
+    list.innerHTML = "";
+    message.hidden = false;
+    message.textContent = `Impossible de charger les tâches : ${error.message}`;
+  }
+}
+
+async function completeTodayTodo(item) {
+  const id = item.dataset.todoId;
+  const checkbox = item.querySelector(".todo-check");
+  checkbox.disabled = true;
+  item.classList.add("completing");
+
+  try {
+    await api(`/api/todos/${encodeURIComponent(id)}/complete`, {
+      method: "POST",
+      body: JSON.stringify({ date: parisDate() })
+    });
+
+    setTimeout(() => {
+      item.remove();
+      const remaining = $("todoList").children.length;
+      $("todoCount").textContent = remaining;
+      if (!remaining) {
+        $("todoMessage").hidden = false;
+        $("todoMessage").textContent = "Toutes les tâches du jour sont accomplies.";
+      }
+    }, 180);
+  } catch (error) {
+    checkbox.checked = false;
+    checkbox.disabled = false;
+    item.classList.remove("completing");
+    alert(error.message);
+  }
+}
+
+$("todoList").addEventListener("change", event => {
+  const checkbox = event.target.closest(".todo-check");
+  if (!checkbox || !checkbox.checked) return;
+  const item = checkbox.closest(".todo-item");
+  if (item) completeTodayTodo(item);
+});
+
+
+
+async function loadWorkshopVehicles() {
+  const container = $("workshopCards");
+  const message = $("workshopMessage");
+  const count = $("workshopCount");
+
+  try {
+    const payload = await api("/api/home/workshop");
+    const vehicles = payload.vehicles || [];
+
+    count.textContent = vehicles.length;
+    container.innerHTML = "";
+
+    if (!vehicles.length) {
+      message.hidden = false;
+      message.textContent = "Aucun véhicule actuellement à l’atelier.";
+      return;
+    }
+
+    message.hidden = true;
+    container.innerHTML = vehicles.map(vehicle => `
+      <article class="notion-mini-card workshop-card">
+        ${vehicle.cover_url
+          ? `<img class="notion-mini-card-cover" src="${escapeHtml(vehicle.cover_url)}" alt="">`
+          : `<div class="notion-mini-card-placeholder">🚌</div>`
+        }
+        <div class="notion-mini-card-body">
+          <h3 class="notion-mini-card-title">${escapeHtml(vehicle.registration)}</h3>
+          <div class="notion-mini-card-meta">
+            <span>Immobilisation</span>
+            <strong>${Number(vehicle.duration_days || 0)} jour(s)</strong>
+          </div>
+        </div>
+      </article>
+    `).join("");
+  } catch (error) {
+    count.textContent = "!";
+    container.innerHTML = "";
+    message.hidden = false;
+    message.textContent = `Impossible de charger l’atelier : ${error.message}`;
+  }
+}
+
+async function loadSickLeaves() {
+  const container = $("sickleaveCards");
+  const message = $("sickleaveMessage");
+  const count = $("sickleaveCount");
+
+  try {
+    const payload = await api("/api/home/sickleave");
+    const leaves = payload.leaves || [];
+
+    count.textContent = leaves.length;
+    container.innerHTML = "";
+
+    if (!leaves.length) {
+      message.hidden = false;
+      message.textContent = "Aucun conducteur actuellement en arrêt.";
+      return;
+    }
+
+    message.hidden = true;
+    container.innerHTML = leaves.map(leave => `
+      <article class="notion-mini-card sickleave-card">
+        <div class="notion-mini-card-placeholder">👤</div>
+        <div class="notion-mini-card-body">
+          <h3 class="notion-mini-card-title">${escapeHtml(leave.driver)}</h3>
+          <div class="notion-mini-card-meta">
+            <span>Fin prévue <strong>${escapeHtml(leave.end_date_label || "—")}</strong></span>
+            <span>Durée <strong>${Number(leave.days || 0)} jour(s)</strong></span>
+          </div>
+        </div>
+      </article>
+    `).join("");
+  } catch (error) {
+    count.textContent = "!";
+    container.innerHTML = "";
+    message.hidden = false;
+    message.textContent = `Impossible de charger les arrêts : ${error.message}`;
+  }
+}
+
+
+function formatRoadDate(start,end){
+  const fmt=value=>{if(!value)return "—";const [y,m,d]=value.split("-").map(Number);return new Intl.DateTimeFormat("fr-FR",{day:"numeric",month:"short",year:"numeric",timeZone:"Europe/Paris"}).format(new Date(Date.UTC(y,m-1,d,12)))};
+  return start===end?fmt(start):`${fmt(start)} → ${fmt(end)}`;
+}
+async function loadRoadworks(){
+  const current=$("roadworksCurrent"),upcoming=$("roadworksUpcoming"),message=$("roadworksMessage"),count=$("roadworksCount");
+  try{
+    const payload=await api("/api/home/roadworks");
+    const all=[...(payload.current||[]),...(payload.upcoming||[])];count.textContent=all.length;message.hidden=true;
+    const cards=(items,status)=>items.length?items.map(item=>`<a class="roadwork-card ${status}" href="${escapeHtml(item.notion_url||"#")}" target="_blank" rel="noopener"><strong>${escapeHtml(item.name||"Travaux")}</strong><span>📍 ${escapeHtml(item.commune||"Commune non renseignée")}</span><span>📅 ${escapeHtml(formatRoadDate(item.start_date,item.end_date))}</span></a>`).join(""):`<div class="roadwork-empty">Aucune déviation ${status==="current"?"en cours":"à venir"}.</div>`;
+    current.innerHTML=cards(payload.current||[],"current");upcoming.innerHTML=cards(payload.upcoming||[],"upcoming");
+  }catch(e){count.textContent="!";message.hidden=false;message.textContent=`Impossible de charger les travaux : ${e.message}`;current.innerHTML="";upcoming.innerHTML=""}
+}
+
+$("workToggle").addEventListener("click",toggleWork);
+$("driveToggle").addEventListener("click",toggleDriving);
+$("fuelButton").addEventListener("click",openFuel);
+$("drivingForm").addEventListener("submit",submitDrivingStart);
+$("drivingEndForm").addEventListener("submit",submitDrivingEnd);
+$("fuelForm").addEventListener("submit",submitFuel);
+$("declareHoursButton").addEventListener("click",openDeclaration);
+$("declareHoursButtonCard").addEventListener("click",openDeclaration);
+$("declareForm").addEventListener("submit",submitDeclaration);
+["morningStart","morningEnd","afternoonStart","afternoonEnd"].forEach(id=>$(id).addEventListener("input",declarationTotal));
+$("declareDate").addEventListener("change",async()=>{
+  const p=await api(`/api/timeclock/declarations?date=${$("declareDate").value}`),d=p.declaration||p.prefill||{};
+  for(const [id,key] of [["morningStart","morning_start"],["morningEnd","morning_end"],["afternoonStart","afternoon_start"],["afternoonEnd","afternoon_end"]]) $(id).value=d[key]||"";
+  $("declareNotes").value=d.notes||""; declarationTotal();
+});
+updateClock(); setInterval(updateClock,1000);
+loadDashboard(); setInterval(loadDashboard,60000);
+loadTodayTodos(); setInterval(loadTodayTodos,300000);
+loadWorkshopVehicles(); loadSickLeaves(); loadRoadworks();
+setInterval(loadWorkshopVehicles,300000); setInterval(loadSickLeaves,300000); setInterval(loadRoadworks,300000);
+loadVehicles(false).catch(()=>{});
+refreshActivity(); setInterval(refreshActivity,15000);
+loadHomeStats();
+
+async function loadWorkshopAppointments() {
+  const container = $("appointmentCards");
+  const message = $("appointmentMessage");
+  const count = $("appointmentCount");
+  if (!container || !message || !count) return;
+  try {
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    const end = new Date(today + "T12:00:00"); end.setDate(end.getDate() + 14);
+    const to = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(end);
+    const payload = await api(`/api/planning/workshop?from=${encodeURIComponent(today)}&to=${encodeURIComponent(to)}`);
+    const items = payload.items || [];
+    count.textContent = items.length;
+    container.innerHTML = "";
+    if (!items.length) { message.hidden = false; message.textContent = "Aucun rendez-vous atelier dans les 14 prochains jours."; return; }
+    message.hidden = true;
+    container.innerHTML = items.slice(0, 6).map(item => {
+      const date = new Date(item.planning_date + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+      return `<article class="notion-mini-card appointment-card"><div class="notion-mini-card-placeholder">🔧</div><div class="notion-mini-card-body"><h3 class="notion-mini-card-title">${escapeHtml(item.registration || "Véhicule")}</h3><div class="notion-mini-card-meta"><strong>${escapeHtml(item.activity_label || "ATELIER")}</strong></div><span class="appointment-date">${escapeHtml(date)}</span></div></article>`;
+    }).join("");
+  } catch (error) {
+    count.textContent = "!"; container.innerHTML = ""; message.hidden = false; message.textContent = `Impossible de charger les rendez-vous : ${error.message}`;
+  }
+}
+
+loadWorkshopAppointments();
+
+// V12.7 — Résumé Vidange Tachy
+async function loadTachySummary() {
+  const donut = document.getElementById("tachyDonut");
+  if (!donut) return;
+  const message = document.getElementById("tachyHomeMessage");
+  try {
+    const payload = await api("/api/tachy");
+    const counts = payload.counts || { total: 0, late: 0, soon: 0, current: 0 };
+    const total = Math.max(0, Number(counts.total || 0));
+    const latePct = total ? (Number(counts.late || 0) / total) * 100 : 0;
+    const soonPct = total ? (Number(counts.soon || 0) / total) * 100 : 0;
+    donut.style.setProperty("--late", latePct.toFixed(2));
+    donut.style.setProperty("--soon", soonPct.toFixed(2));
+    donut.style.setProperty("--current", Math.max(0, 100 - latePct - soonPct).toFixed(2));
+    document.getElementById("tachyTotal").textContent = total;
+    document.getElementById("tachyLate").textContent = counts.late || 0;
+    document.getElementById("tachySoon").textContent = counts.soon || 0;
+    document.getElementById("tachyCurrent").textContent = counts.current || 0;
+    message.textContent = counts.unknown
+      ? `${counts.unknown} véhicule(s) sans date de déchargement renseignée.`
+      : total ? "Échéance calculée à 90 jours après le dernier déchargement." : "Aucun véhicule en service trouvé.";
+  } catch (error) {
+    message.textContent = `Impossible de charger les échéances : ${error.message}`;
+  }
+}
+loadTachySummary();

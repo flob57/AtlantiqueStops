@@ -1,0 +1,651 @@
+:root{
+  color-scheme:dark;
+  --bg:#050806;
+  --panel:#0e1510;
+  --panel2:#131d15;
+  --line:#334238;
+  --green:#7be12d;
+  --free:#27883c;
+  --occupied:#a52b27;
+  --danger:#ff2117;
+  --neutral:#626b65;
+  --text:#f5f8f5;
+  --muted:#aeb9b1;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,a{font:inherit}
+.parking-header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:18px max(18px,calc((100% - 1320px)/2));border-bottom:1px solid var(--line);background:#071009}
+.back-link{display:inline-block;margin-bottom:10px;color:#dce5df;text-decoration:none}
+.title-line{display:flex;align-items:center;gap:13px}
+.parking-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:10px;background:#2379ba;color:#fff;font-size:29px;font-weight:900}
+h1,h2,p{margin:0}
+h1{font-size:27px} h1 small{padding:3px 7px;border:1px solid #526159;border-radius:999px;font-size:10px;color:#bac5bd}
+.title-line p{margin-top:4px;color:var(--muted);font-size:13px}
+.header-summary{text-align:right}.header-summary strong,.header-summary span{display:block}.header-summary strong{font-size:28px;color:var(--green)}.header-summary span{color:var(--muted);font-size:12px}
+main{width:min(1320px,calc(100% - 28px));margin:22px auto 60px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:16px}
+.toolbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+.toolbar button,.tab{border:1px solid #425147;border-radius:10px;padding:11px 15px;background:#151f18;color:#fff;font-weight:800;cursor:pointer}
+.toolbar button:first-child{background:var(--green);color:#071005;border-color:var(--green)}
+.last-update{color:var(--muted);font-size:12px}
+.message{margin:12px 0;padding:13px 15px;border-radius:10px;background:#173150;color:#eaf4ff}.message.error{background:#541e1e}
+.tabs{display:flex;gap:8px;margin-bottom:15px;overflow:auto}.tab.active{background:var(--green);color:#071005;border-color:var(--green)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.panel-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:15px;margin:12px 0}
+.panel-heading span{color:var(--green);font-size:10px;font-weight:900;letter-spacing:.15em}.panel-heading h2{font-size:31px}
+.panel-stats{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.stat-chip{padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#101712;color:#dfe8e2;font-size:12px}
+.depot-plan{position:relative;min-height:720px;overflow:hidden;border:1px solid #405046;border-radius:18px;background:#727872;box-shadow:0 24px 55px rgba(0,0,0,.27)}
+.building{position:absolute;display:grid;place-items:center;background:#315d9f;color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.07)}
+.lestonan-building{left:21%;top:5%;width:40%;height:42%;font-size:28px}.lestonan-building span{font-size:16px}
+.gourvily-building{left:0;bottom:2%;width:55%;height:35%;font-size:30px}
+.facility{position:absolute;display:grid;place-items:center;padding:5px;background:#d7dfd8;color:#27312a;border:2px solid #5b685e;text-align:center;font-size:12px;font-weight:800}
+.office{left:55%;top:25%;width:8%;height:15%}.wash{left:73%;top:13%;width:5%;height:30%;writing-mode:vertical-rl}.adblue{left:68%;top:13%;width:5%;height:13%;background:#9eb4db}.local{left:46%;bottom:2%;width:10%;height:10%;background:#a8cf7e}.algeco{left:56%;bottom:14%;width:7%;height:11%;background:#b9d69c}.gourvily-vl-zone{left:64%;bottom:2%;width:7%;height:27%;background:#e0e2dd}
+.traffic-arrow{position:absolute;color:#71b744;font-size:70px;font-weight:900;text-shadow:0 2px 0 #315d9f}.arrow-left{left:34%;top:-1%}.arrow-down{left:9%;top:16%}.arrow-up{right:8%;top:28%}.arrow-exit{right:21%;bottom:6%}
+.trees{position:absolute;background:radial-gradient(ellipse at center,#3b8e2c 0 44%,transparent 47%) 0 0/80px 45px repeat-x}.top-trees{left:0;right:0;top:0;height:55px}.right-trees{right:0;top:12%;bottom:0;width:55px;background:radial-gradient(ellipse at center,#3b8e2c 0 44%,transparent 47%) 0 0/45px 75px repeat-y}
+.parking-spot{position:absolute;z-index:4;display:flex;flex-direction:column;justify-content:center;min-width:84px;min-height:72px;padding:8px;border:3px solid rgba(255,255,255,.82);border-radius:9px;background:var(--neutral);box-shadow:0 7px 16px rgba(0,0,0,.28);transition:.18s}
+.parking-spot.free.standard{background:var(--free)}.parking-spot.occupied{background:var(--occupied)}.parking-spot.free.neutral{background:var(--neutral)}.parking-spot.occupied.overload{background:var(--danger);box-shadow:0 0 0 5px rgba(255,33,23,.25),0 8px 22px rgba(0,0,0,.4);animation:dangerPulse 1.35s infinite}.parking-spot.occupied.overload::before{content:"⚠";position:absolute;right:-11px;top:-15px;font-size:26px}
+@keyframes dangerPulse{50%{filter:brightness(1.32);transform:scale(1.025)}}
+.spot-head{display:flex;justify-content:space-between;gap:5px;align-items:flex-start}.spot-name{font-size:11px;text-transform:uppercase}.spot-state{font-size:9px;opacity:.85}
+.spot-vehicles{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}.vehicle-badge{display:inline-flex;align-items:center;gap:3px;padding:4px 6px;border-radius:5px;background:rgba(0,0,0,.58);color:#fff;font-size:11px;font-weight:900}.empty-label{font-size:10px;color:rgba(255,255,255,.78)}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.legend-item{display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#101712;color:#dce5df;font-size:11px}.legend-color{width:13px;height:13px;border-radius:4px}
+.external-groups{display:grid;gap:18px}.external-group{padding:18px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(145deg,#111a13,#090e0a)}.external-group h3{margin:0 0 12px;font-size:20px}.external-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}.external-card{padding:13px;border:1px solid #3b493f;border-radius:12px;background:#141e16}.external-card h4{margin:0 0 9px}.external-card .spot-vehicles{margin:0}
+@media(max-width:850px){
+ .parking-header,.toolbar,.panel-heading{align-items:flex-start;flex-direction:column}
+ .header-summary{text-align:left}
+ .depot-plan{min-height:680px;overflow:auto}
+ .parking-spot{transform:scale(.82);transform-origin:center}
+}
+@media(max-width:520px){
+ main{width:calc(100% - 14px)}
+ .depot-plan{min-width:780px}
+ .tab-panel{overflow-x:auto}
+}
+
+
+/* V8.2 — correction du chevauchement des emplacements */
+.parking-spot {
+  min-width: 0;
+  min-height: 0;
+  padding: 6px;
+  overflow: visible;
+}
+
+.parking-spot .spot-head {
+  min-width: 0;
+}
+
+.parking-spot .spot-name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.15;
+  font-size: 10px;
+}
+
+.parking-spot .spot-state {
+  flex: 0 0 auto;
+  font-size: 8px;
+}
+
+.parking-spot .spot-vehicles {
+  gap: 3px;
+  margin-top: 5px;
+}
+
+.parking-spot .vehicle-badge {
+  max-width: 100%;
+  padding: 3px 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+}
+
+.gourvily-plan .parking-spot {
+  padding: 5px;
+}
+
+.gourvily-plan .parking-spot .spot-name {
+  font-size: 9px;
+}
+
+@media (max-width: 850px) {
+  .parking-spot {
+    transform-origin: center;
+  }
+}
+
+
+/* V8.2 — schéma validé */
+.lestonan-plan {
+  min-height: 760px;
+}
+
+.lestonan-building {
+  left: 20%;
+  top: 5%;
+  width: 36%;
+  height: 38%;
+}
+
+.office {
+  left: 51%;
+  top: 24%;
+  width: 7%;
+  height: 14%;
+}
+
+/* Lavage + AdBlue entre Lestonan 5 et le couple Mini / Lestonan 11 */
+.wash {
+  left: 78.5%;
+  top: 10%;
+  width: 5.2%;
+  height: 22%;
+  writing-mode: horizontal-tb;
+}
+
+.adblue {
+  left: 78.5%;
+  top: 32.5%;
+  width: 5.2%;
+  height: 8%;
+}
+
+.gourvily-plan {
+  min-height: 760px;
+}
+
+.gourvily-plan .parking-spot {
+  padding: 5px;
+}
+
+.gourvily-plan .parking-spot .spot-name {
+  font-size: 8.5px;
+}
+
+@media (min-width: 1100px) {
+  .depot-plan {
+    min-width: 1180px;
+  }
+}
+
+
+/* ==================================================================
+   V8.2 — optimisation PC et iPhone des plans de stationnement
+   ================================================================== */
+
+/* Immatriculations plus visibles sur ordinateur */
+@media (min-width: 851px) {
+  .parking-spot .vehicle-badge {
+    font-size: 13px;
+    font-weight: 950;
+    padding: 5px 7px;
+    letter-spacing: .35px;
+  }
+
+  .external-card .vehicle-badge {
+    font-size: 14px;
+    padding: 6px 8px;
+  }
+}
+
+/* Les emplacements extérieurs occupés suivent la même couleur rouge */
+.external-card {
+  transition: border-color .16s ease, background .16s ease;
+}
+
+.external-card.occupied {
+  background: linear-gradient(145deg, #9f302b, #76221f);
+  border-color: rgba(255,255,255,.8);
+  box-shadow: 0 8px 18px rgba(0,0,0,.25);
+}
+
+.external-card.occupied h4 {
+  color: #fff;
+}
+
+.external-card.free {
+  background: #141e16;
+}
+
+/* Défilement horizontal propre des plans */
+.tab-panel {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+}
+
+.depot-plan {
+  touch-action: pan-x pan-y;
+}
+
+/* Optimisation iPhone */
+@media (max-width: 850px) {
+  main {
+    width: calc(100% - 14px);
+    margin-top: 12px;
+  }
+
+  .parking-header {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .tabs {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    padding: 5px 0;
+    background: var(--bg);
+  }
+
+  .panel-heading h2 {
+    font-size: 29px;
+  }
+
+  .panel-stats {
+    justify-content: flex-start;
+  }
+
+  .stat-chip {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .05em;
+  }
+
+  .tab-panel {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 8px;
+  }
+
+  /* On conserve un plan large afin d'éviter toute superposition.
+     L'utilisateur peut le faire glisser horizontalement comme une carte. */
+  .depot-plan {
+    min-width: 1180px;
+    min-height: 760px;
+    overflow: hidden;
+  }
+
+  .gourvily-plan {
+    min-width: 1320px;
+  }
+
+  .parking-spot {
+    transform-origin: center;
+    padding: 6px;
+  }
+
+  /* Sur les places occupées, priorité absolue à l'immatriculation. */
+  .parking-spot.occupied .spot-head {
+    min-height: 18px;
+  }
+
+  .parking-spot.occupied .spot-name {
+    display: none;
+  }
+
+  .parking-spot.occupied .spot-state {
+    position: absolute;
+    top: 5px;
+    right: 6px;
+    font-size: 9px;
+  }
+
+  .parking-spot.occupied .spot-vehicles {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    margin: 13px 0 0;
+  }
+
+  .parking-spot.occupied .vehicle-badge {
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+    padding: 6px 8px;
+    font-size: 14px;
+    font-weight: 950;
+    letter-spacing: .45px;
+  }
+
+  /* Les places libres gardent leur nom pour pouvoir être identifiées. */
+  .parking-spot.free .spot-name {
+    font-size: 10px;
+  }
+
+  /* Les emplacements inclinés de Gourvily restent dans le même sens que
+     sur ordinateur. L'immatriculation est remise à l'horizontale. */
+  .gourvily-plan .parking-spot[data-spot-name="gourvily mini"] .vehicle-badge,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 1"] .vehicle-badge,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 2"] .vehicle-badge,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 3"] .vehicle-badge,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 4"] .vehicle-badge,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 5"] .vehicle-badge,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 6"] .vehicle-badge,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 7"] .vehicle-badge,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 8"] .vehicle-badge {
+    transform: rotate(42deg);
+  }
+
+  .gourvily-plan .parking-spot[data-spot-name="gourvily mini"].occupied .spot-state,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 1"].occupied .spot-state,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 2"].occupied .spot-state,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 3"].occupied .spot-state,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 4"].occupied .spot-state,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 5"].occupied .spot-state,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 6"].occupied .spot-state,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 7"].occupied .spot-state,
+  .gourvily-plan .parking-spot[data-spot-name="gourvily 8"].occupied .spot-state {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .depot-plan {
+    min-width: 1120px;
+  }
+
+  .gourvily-plan {
+    min-width: 1380px;
+  }
+
+  .parking-spot.occupied .vehicle-badge {
+    font-size: 15px;
+  }
+
+  .external-list {
+    grid-template-columns: 1fr;
+  }
+
+  .external-card .vehicle-badge {
+    font-size: 15px;
+  }
+}
+
+
+/* =================================================================
+   V8.2 — proportions ciblées et compteurs de flotte
+   ================================================================= */
+
+.header-counters {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.header-counters .header-summary {
+  min-width: 155px;
+  padding: 9px 13px;
+  border: 1px solid #34483b;
+  border-radius: 14px;
+  background: #101813;
+}
+
+.header-counters .header-summary strong {
+  color: var(--green);
+  font-size: 20px;
+}
+
+.header-counters .header-summary span {
+  font-size: 10px;
+  letter-spacing: .04em;
+}
+
+/* Lestonan 1 à 5 : format vertical, surface équivalente à une place horizontale */
+.parking-spot.vertical-lestonan {
+  padding: 6px 5px;
+  overflow: visible;
+}
+
+.parking-spot.vertical-lestonan .spot-head {
+  position: absolute;
+  inset: 5px auto 5px 5px;
+  width: 34%;
+  display: block;
+}
+
+.parking-spot.vertical-lestonan .spot-name {
+  display: block !important;
+  font-size: 9px;
+  line-height: .98;
+  text-align: center;
+  letter-spacing: .04em;
+}
+
+.parking-spot.vertical-lestonan .spot-state {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  margin-left: 4px;
+  font-size: 7px;
+}
+
+.parking-spot.vertical-lestonan .spot-vehicles {
+  position: absolute;
+  top: 18px;
+  right: 4px;
+  bottom: 5px;
+  width: 58%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.parking-spot.vertical-lestonan .vehicle-badge-vertical {
+  display: block;
+  padding: 4px 3px;
+  font-size: 10px;
+  line-height: 1.04;
+  text-align: center;
+  white-space: normal;
+}
+
+/* Gourvily mini et 1 à 8 : carte agrandie, contenu parfaitement lisible */
+.gourvily-plan .parking-spot.large-gourvily {
+  padding: 7px 8px;
+}
+
+.gourvily-plan .parking-spot.large-gourvily .spot-name {
+  font-size: 9px;
+  line-height: 1.05;
+}
+
+.gourvily-plan .parking-spot.large-gourvily .spot-state {
+  font-size: 7px;
+}
+
+.gourvily-plan .parking-spot.large-gourvily .vehicle-badge {
+  font-size: 12px;
+  font-weight: 950;
+  padding: 5px 6px;
+}
+
+/* Paysage iPhone : même schéma et mêmes proportions que sur PC,
+   ajustés à la largeur disponible pour montrer le dépôt complet. */
+@media (max-width: 950px) and (orientation: landscape) {
+  body {
+    min-width: 0;
+  }
+
+  .parking-header {
+    padding: 8px 10px;
+  }
+
+  .parking-header .title-line p,
+  .parking-header .back-link {
+    display: none;
+  }
+
+  .parking-header h1 {
+    font-size: 19px;
+  }
+
+  .header-counters {
+    gap: 5px;
+  }
+
+  .header-counters .header-summary {
+    min-width: 120px;
+    padding: 5px 8px;
+  }
+
+  .header-counters .header-summary strong {
+    font-size: 15px;
+  }
+
+  main {
+    width: calc(100% - 8px);
+    max-width: none;
+    margin: 4px auto;
+  }
+
+  .toolbar,
+  .message,
+  .panel-heading,
+  .legend {
+    margin-left: 4px;
+    margin-right: 4px;
+  }
+
+  .tabs {
+    position: static;
+    padding: 3px 0;
+  }
+
+  .tab-panel {
+    overflow: hidden;
+  }
+
+  .depot-plan,
+  .gourvily-plan {
+    min-width: 0 !important;
+    width: 100% !important;
+    height: min(69vw, 610px) !important;
+    min-height: 0 !important;
+  }
+
+  .parking-spot.occupied .spot-name,
+  .parking-spot.occupied .spot-state {
+    display: block;
+  }
+
+  .parking-spot .vehicle-badge {
+    font-size: clamp(7px, 1.15vw, 11px);
+    padding: 3px 4px;
+  }
+
+  .parking-spot.vertical-lestonan .spot-name {
+    font-size: clamp(5px, .82vw, 8px);
+  }
+
+  .parking-spot.vertical-lestonan .vehicle-badge-vertical {
+    font-size: clamp(6px, .92vw, 9px);
+  }
+
+  .gourvily-plan .parking-spot.large-gourvily .spot-name {
+    font-size: clamp(5px, .78vw, 8px);
+  }
+
+  .gourvily-plan .parking-spot.large-gourvily .vehicle-badge {
+    font-size: clamp(6px, .95vw, 10px);
+  }
+}
+
+/* Portrait : plan défilable conservé, avec priorité aux immatriculations */
+@media (max-width: 850px) and (orientation: portrait) {
+  .header-counters {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .header-counters .header-summary {
+    min-width: 140px;
+  }
+
+  .parking-spot.vertical-lestonan .spot-name {
+    display: block !important;
+  }
+
+  .parking-spot.vertical-lestonan .vehicle-badge-vertical {
+    font-size: 14px;
+  }
+
+  .gourvily-plan .parking-spot.large-gourvily .vehicle-badge {
+    font-size: 14px;
+  }
+}
+
+
+/* =================================================================
+   V8.2 — dimensions physiques équivalentes des places verticales
+   ================================================================= */
+
+/* Les places 1 à 5 sont réellement le même rectangle que 6 à 10,
+   tourné de 90 degrés. Le texte vertical reste inchangé. */
+.parking-spot.vertical-lestonan {
+  min-width: 0;
+  min-height: 0;
+}
+
+.parking-spot.vertical-lestonan .spot-head {
+  width: 42%;
+}
+
+.parking-spot.vertical-lestonan .spot-name {
+  font-size: 9px;
+  line-height: .95;
+}
+
+.parking-spot.vertical-lestonan .spot-vehicles {
+  width: 54%;
+  top: 19px;
+  right: 3px;
+}
+
+.parking-spot.vertical-lestonan .vehicle-badge-vertical {
+  font-size: 11px;
+  line-height: 1.02;
+  padding: 5px 2px;
+}
+
+/* Gourvily Mini + 1 à 8 : la rangée est abaissée et resserrée. */
+.gourvily-plan .parking-spot.large-gourvily {
+  transform-origin: center center;
+}
+
+@media (max-width: 950px) and (orientation: landscape) {
+  .parking-spot.vertical-lestonan .spot-name {
+    font-size: clamp(5px, .76vw, 8px);
+  }
+
+  .parking-spot.vertical-lestonan .vehicle-badge-vertical {
+    font-size: clamp(6px, .9vw, 10px);
+  }
+}
+
+/* V10.5 — véhicule prévu en circulation */
+.parking-spot.occupied.running-today:not(.overload){
+  background:#d97706;
+  border-color:#ffd28a;
+  box-shadow:0 0 0 4px rgba(217,119,6,.22),0 8px 20px rgba(0,0,0,.35);
+}
+.external-card.occupied.running-today{
+  background:linear-gradient(145deg,#d97706,#98510a);
+  border-color:#ffd28a;
+}
+
+
+/* V11.0 — rendez-vous atelier du jour */
+.parking-spot.occupied.workshop-today:not(.overload),
+.external-card.occupied.workshop-today{
+  background:linear-gradient(145deg,#7c3aed,#4c1d95)!important;
+  border-color:#c4b5fd!important;
+  box-shadow:0 0 0 2px rgba(196,181,253,.28),0 10px 24px rgba(0,0,0,.35)!important;
+}
+.parking-spot.workshop-today .spot-state::after{content:" · Atelier";}
