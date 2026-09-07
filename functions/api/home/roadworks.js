@@ -30,7 +30,8 @@ export async function onRequestGet(context) {
   try {
     const token = context.env.NOTION_TOKEN;
     if (!token) return error("Secret NOTION_TOKEN absent.", 500);
-    const databaseId = context.env.NOTION_WORKS_DATABASE_ID || FALLBACK_DATABASE_ID;
+    const databaseId = context.env.NOTION_WORKS_DATABASE_ID;
+    if (!databaseId) return error("Variable NOTION_WORKS_DATABASE_ID absente.", 503);
     const pages = await queryDatabase(token, databaseId);
     const today = parisDate();
     const items = [];
