@@ -1,6 +1,6 @@
 import { json, error, requireDb, ensureParkingSchema } from "../../../_parking.js";
 
-const PARKING_DATABASE_ID = "35e6bbfa7ec180a18deff12d69f95ebc";
+
 const BATCH_SIZE = 10;
 
 function richText(parts) {
