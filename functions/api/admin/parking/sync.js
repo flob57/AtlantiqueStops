@@ -135,7 +135,8 @@ export async function onRequestPost(context) {
 
     const startCursor = requestBody.start_cursor || null;
     const reset = Boolean(requestBody.reset);
-    const parkingDatabaseId = context.env.NOTION_PARKING_DATABASE_ID || PARKING_DATABASE_ID;
+    const parkingDatabaseId = context.env.NOTION_PARKING_DATABASE_ID;
+    if (!parkingDatabaseId) return error("Variable NOTION_PARKING_DATABASE_ID absente.", 503);
 
     if (reset) await db.prepare(`DELETE FROM parking_spots`).run();
 
