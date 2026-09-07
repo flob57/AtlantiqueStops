@@ -7,7 +7,7 @@
     {
       "binding": "DB",
       "database_name": "atlantiquestops-db",
-      "database_id": "A_REMPLACER_PAR_ID_D1_ATLANTIQUE"
+      "database_id": ""
     }
   ],
   "r2_buckets": [
