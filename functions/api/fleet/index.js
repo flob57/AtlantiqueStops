@@ -4,7 +4,7 @@ import {
 } from "../../_home_status.js";
 import { loadPdvv, pdvvByTheoretical, PDVV_FALLBACK_DATABASE_ID, normalizeRegistration } from "../../_pdvv.js";
 
-const FALLBACK_DATABASE_ID = "2e66bbfa7ec1804f963bc019a4d6de92";
+
 
 function value(properties, names) {
   return propertyText(firstProperty(properties, names));
