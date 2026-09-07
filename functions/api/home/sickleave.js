@@ -64,8 +64,8 @@ export async function onRequestGet(context) {
     const token = context.env.NOTION_TOKEN;
     if (!token) return error("Secret NOTION_TOKEN absent.", 500);
 
-    const databaseId =
-      context.env.NOTION_SICKLEAVE_DATABASE_ID || SICKLEAVE_DATABASE_ID;
+    const databaseId = context.env.NOTION_SICKLEAVE_DATABASE_ID;
+    if (!databaseId) return error("Variable NOTION_SICKLEAVE_DATABASE_ID absente.", 503);
     const today = parisDate();
 
     let pages;
