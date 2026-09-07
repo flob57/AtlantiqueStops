@@ -26,10 +26,11 @@ export async function onRequestGet(context) {
     const token = context.env.NOTION_TOKEN;
     if (!token) return error("Secret NOTION_TOKEN absent.", 500);
 
-    const vehiclesDatabaseId =
-      context.env.NOTION_VEHICLES_DATABASE_ID || VEHICLES_DATABASE_ID;
-    const parkingDatabaseId =
-      context.env.NOTION_PARKING_DATABASE_ID || PARKING_DATABASE_ID;
+    const vehiclesDatabaseId = context.env.NOTION_VEHICLES_DATABASE_ID;
+    const parkingDatabaseId = context.env.NOTION_PARKING_DATABASE_ID;
+    if (!vehiclesDatabaseId || !parkingDatabaseId) {
+      return error("Variables Notion atelier manquantes : NOTION_VEHICLES_DATABASE_ID ou NOTION_PARKING_DATABASE_ID.", 503);
+    }
 
     const workshopParkingPage =
       await findWorkshopParkingPage(token, parkingDatabaseId);
