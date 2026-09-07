@@ -1,13 +1,14 @@
 # Configuration Notion — AtlantiqueStops
 
-AtlantiqueStops utilise le même principe que BreizhStops : le secret `NOTION_TOKEN` est conservé dans Cloudflare et les bases utilisées par l'application sont indiquées par leurs identifiants de base/datasource.
+AtlantiqueStops utilise le même principe que BreizhStops : le secret `NOTION_TOKEN` est conservé dans Cloudflare et les bases utilisées par l'application sont indiquées par leurs identifiants Notion. **Aucun fallback vers les bases générales « Bus et Cars / Bus Collection » ne doit être utilisé.**
 
 ## Parc Océcars
 
 La base du parc préparée dans ton espace Notion est `Parc Océcars`.
 
 - Base Notion : `https://app.notion.com/p/3c193645836180918c1ac73df7ea9eba?pvs=204`
-- Data source : `collection://3c193645-8361-80f4-84d7-000b045752c6`
+- Identifiant de base à utiliser avec l'API : `3c193645-8361-8091-8c1a-c73df7ea9eba`
+- Data source interne : `collection://3c193645-8361-80f4-84d7-000b045752c6`
 
 Elle contient notamment :
 
@@ -30,7 +31,10 @@ Une base `Lignes` existe également sous la page `Océcars - Transdev` :
 
 `https://app.notion.com/p/3c1936458361805695f6ec61b8cc05c1`
 
-Elle devra être utilisée par AtlantiqueStops lorsque nous activerons la partie réseau / lignes.
+- Identifiant de base : `3c193645-8361-8056-95f6-ec61b8cc05c1`
+- Data source : `collection://3c193645-8361-80e1-b48c-000b93e6e644`
+
+Elle est prévue pour la partie réseau / lignes.
 
 ## Yélo
 
@@ -73,4 +77,4 @@ Les bases identifiées aujourd'hui pour le 17 sont :
 - `Lignes Océcars` ;
 - `Parc Yélo`.
 
-Les autres bases seront ajoutées au fur et à mesure, sans modifier le fonctionnement de BreizhStops.
+Les autres bases seront ajoutées au fur et à mesure **uniquement lorsqu'elles auront été créées ou dupliquées dans l'espace Océcars**. Une variable absente doit produire une erreur de configuration ou désactiver proprement le module concerné ; elle ne doit jamais faire basculer l'application vers une ancienne base.
